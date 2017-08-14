@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+
+<arg name="enable_robot" default="-e"/>
+<arg name="tuck_arms" default="-t"/>
+
+<node name="enable_robot" pkg="baxter_tools" type="enable_robot.py" 
+    args="$(arg enable_robot)">
+</node>
+
+<node name="tuck_arms" pkg="baxter_tools" type="tuck_arms.py" 
+    args="$(arg tuck_arms)">
+</node>
+
+
+<node name="psmove_start" pkg="psmove" type="move.py" output="screen">
+</node>
+
+
+</launch>
