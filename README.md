@@ -5,7 +5,7 @@ Ubuntu 14.04 w/ Bluetooth
 
 Sony PlayStation Move motion controller
 
-[Psmove api install](https://github.com/thp/psmoveapi)
+[PSmove API install](https://github.com/thp/psmoveapi)
 
 [Baxter SDK](http://sdk.rethinkrobotics.com/wiki/Workstation_Setup)
 
