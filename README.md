@@ -50,6 +50,6 @@ Triangle: Takes position readings for calibration (used only in the calibration 
 Prints the baxters current pose to the screen. Useful for debugging.
 
 ## Information:
-[Psmove API documentation](https://thp.io/2012/thesis/thesis.pdf)
+[PSmove API documentation](https://thp.io/2012/thesis/thesis.pdf)
 
 [Baxter_interface python API](http://api.rethinkrobotics.com/)
