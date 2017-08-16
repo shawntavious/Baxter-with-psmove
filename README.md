@@ -34,10 +34,15 @@ Publishes poses to 'psmove' topic and sends the '/psmove' transform to Rviz.
 
 ## Buttons:
 Move: resets orientation
+
 Circle: move arm to neutral
+
 Square: Locks and unlocks position
+
 Cross: Locks and unlocks orientation
+
 PS: Closes the program and safely shuts down the robot
+
 Triangle: Takes position readings for calibration (used only in the calibration phase)
 
 ## show_pose.py
