@@ -1,10 +1,6 @@
 #! /usr/bin/python
 
 '''
-Richard Sweetman 8/8/17
-rsweetman@knights.ucf.edu
-'''
-'''
 WARNING: NOT TESTED OUTSIDE OF SIMULATOR. USE CAUTION.
 Baxter robot will mirror your movements. Make sure the tracker is tracking
 by running ./test_tracker in the src/psmoveapi/build directory. If the box
@@ -28,24 +24,20 @@ from geometry_msgs.msg import (
 )
 from std_msgs.msg import Header
 
-'''Needed for baxter's IK'''
 from baxter_core_msgs.srv import (
     SolvePositionIK,
     SolvePositionIKRequest,
 )
 
-'''Path to import psmoveapi'''
 sys.path.insert(0, '/home/nano/src/psmoveapi/build')
 
 '''API documentation
 https://thp.io/2012/thesis/thesis.pdf'''
 import psmove
 
-'''Allows for standard tracking in a 2D environment'''
 tracker = psmove.PSMoveTracker()
 tracker.set_mirror(True)
 
-'''Sensor fusion module for 3D tracking'''
 fusion = psmove.PSMoveFusion(tracker, 1, 1000)
 
 move = psmove.PSMove()
@@ -67,10 +59,8 @@ while tracker.enable(move) != psmove.Tracker_CALIBRATED:
 
 
 class Follow(object):
-	'''inits broadcasters, publishers, limb, gripper, and so on'''
 	def __init__(self, limb, matrix):
 		self.br = tf.TransformBroadcaster()
-		'''holds the various translations needed to make the arm work in rviz'''
 		self.matrix = matrix
 		self.control_arm = baxter_interface.limb.Limb(limb)
 		self.ns = "ExternalTools/" + limb + "/PositionKinematicsNode/IKService"
@@ -91,7 +81,6 @@ class Follow(object):
 			self.control_arm.exit_control_mode()
 		return True
 
-	'''Resets the arm to neutral, 15 second timeout'''
 	def set_neutral(self):
 		print("Moving to neutral pose...")
 		self.control_arm.move_to_neutral()
@@ -108,15 +97,11 @@ class Follow(object):
 		return True
 
 	def get_pose(self, pos_pause, ori_pause):
-		'''Ori works very accurately'''
 		ori = move.get_orientation()
-		'''Pos not as accurate.'''
 		pos = fusion.get_position(move)
 		true_x, true_y, true_z = self.matrix[0]
 		comp_x, comp_y, comp_z = self.matrix[1]
 		
-		'''Does the math needed to compress the cordinates so they fit within
-		baxters range of motion as well as smooth out the movements a little'''
 		x=(pos[2]-true_x)/comp_x
 		y=(pos[0]-true_y)/comp_y
 		z=((-pos[1]-true_z)/comp_z)
@@ -157,8 +142,6 @@ class Follow(object):
 		return poses
 
 	def grab(self):
-		'''Puts the button values on a 0-100 scale instead of a 0-255 scale
-		so we can pass those values to baxter'''
 		'''Allows user to close gripper by relation to how far they pull the trigger
 		WARNING: MAY REQUIRE FORCE CALIBRATION.'''
 		if move.get_trigger():
@@ -172,12 +155,10 @@ class Follow(object):
 		ikreq = SolvePositionIKRequest()
 		ikreq.pose_stamp.append(poses)
 		try:
-			'''Does the hard work of solving the joint angles for a particular position'''
 			resp = iksvc(ikreq)
 			if resp.isValid[0]:
 				# print 'Joint solution found'
 				limb_joints = dict(zip(resp.joints[0].name,resp.joints[0].position))
-				'''Function that actually moves the arm to limb_joints, waits 0.1 seconds for move to finish'''
 				self.control_arm.move_to_joint_positions(limb_joints, 0.1)
 				# print limb_joints
 				move.set_rumble(0)
@@ -192,13 +173,11 @@ class Follow(object):
 		ori_pause = False
 
 		while not rospy.is_shutdown():
-			'''Constantly updates the tracker'''
 			tracker.update_image()
 			tracker.update()
 			status = tracker.get_status(move)
 
 			if status == psmove.Tracker_TRACKING:
-				'''Resets the rumble'''
 				move.set_rumble(0)
 				'''Gets buttons'''
 				while move.poll():
@@ -266,20 +245,18 @@ def calibrate():
 				move.set_rumble(0)
 				while move.poll():
 					pressed, released = move.get_button_events()
-					'''Triangle when pressed gets the position from move'''
 					if pressed & psmove.Btn_TRIANGLE:
 						pos = fusion.get_position(move)
 						'''psmove api's x,y,z positions are set up differently
 						then in rviz. For example the y axis in the psmove
 						api is the z axis in rviz (also it's inverted). Which is
-						why the indecies set up so oddly.'''
+						why the indecies are set up so oddly.'''
 						x=pos[2]
 						y=pos[0]
 						z=-pos[1]
 						circle[key] = x,y,z
 						print circle[key]
 			else:
-				'''if not tracking move will rumble'''
 				move.set_rumble(120)
 
 	# print circle
@@ -310,31 +287,3 @@ rospy.init_node('psmove_broadcaster', anonymous=True)
 follow = Follow('left', calibrate())
 rospy.on_shutdown(follow.clean_shutdown)
 follow.puppet()
-
-'''
-ISSUES AND EXPLAINATIONS: 
-1) Fusion module was made for use with Open-GL based augmented reality applications.
-So the position coordiates given are not with respect to any unit of measurement. Also
-the values can be large and very 'bouncy' so the pos coordinates cannot simple be taken
-raw and passed to the robot. Additionally 0,0,0 is located at the camera and not the user.
-So moving the move away from you toward the camera would bring the arm closer to the robot
-which is obviously a problem. 
-To attempt to fix this issue the program will take coordinates from the center, forward, 
-left and right of the user. To get a coordinate offset for where the user is located and
-this is the users range of motion in x,y and z. That offset is then subtracted from the
-raw position coords to get one: an origin that is no longer set at the camera it's now centered 
-at the users chest and two: a radius from the center for x,y and z. Those radius's are then
-divided by the max reach of the robot arm to get the ammount of compression that needs to be
-applied to each axis to shrink the values to ensure they are within the robots reach. Then in
-get_pose the math is basically: 
-
-value_passed_to_robot = (raw_pos_from_move - offset_from_user)/compression
-
-for each axis so that the robot will more or less mirror the users movements. 
-The movements are not one to one and could use some improvement.
-
-2) The position coordinates are based on the cameras field of view. So if you change the 
-angle of the camera or your relationship to it in anyway you change how your position is 
-interpreted (i.e. forward to you may not be forward to the robot depending on how the camera is 
-looking at you). I have not been able to fix this.
-'''
